@@ -1,0 +1,122 @@
+[
+  {
+    "id": "jailbreak_ignore_instructions",
+    "pattern": "(?i)\\b(ignore|disregard|forget|override)\\b.{0,40}\\b(all\\s+)?(previous|prior|above|system)\\b.{0,30}\\b(instructions?|rules?|prompts?)\\b",
+    "severity": "high",
+    "description": "Explicit instruction override / jailbreak"
+  },
+  {
+    "id": "jailbreak_roleplay_dan",
+    "pattern": "(?i)\\b(you\\s+are\\s+now|act\\s+as|pretend\\s+(to\\s+be|you\\s+are))\\b.{0,30}\\b(DAN|do\\s+anything\\s+now|unrestricted|unfiltered|jailbroken)\\b",
+    "severity": "high",
+    "description": "DAN / unrestricted roleplay jailbreak"
+  },
+  {
+    "id": "jailbreak_developer_mode",
+    "pattern": "(?i)\\b(developer|dev|debug|maintenance|admin)\\s+mode\\b|\\b(activate|enable|turn\\s+on)\\b.{0,20}\\b(developer|dev|debug|maintenance|admin)\\s+mode\\b",
+    "severity": "high",
+    "description": "Fake developer/admin mode activation"
+  },
+  {
+    "id": "reveal_system_prompt",
+    "pattern": "(?i)\\b(reveal|show|print|display|repeat|output|dump|recite)\\b.{0,40}\\b(system\\s+prompt|hidden\\s+prompt|initial\\s+prompt|your\\s+instructions?|full\\s+prompt)\\b",
+    "severity": "high",
+    "description": "Request to exfiltrate system prompt"
+  },
+  {
+    "id": "reveal_internal_rules",
+    "pattern": "(?i)\\b(what\\s+are\\s+your|list\\s+your|show\\s+your)\\b.{0,30}\\b(rules?|restrictions?|guardrails?|policies?|constraints?)\\b",
+    "severity": "medium",
+    "description": "Probe internal rules and guardrails"
+  },
+  {
+    "id": "gateway_token_literal",
+    "pattern": "GW-7k9mN2pQ8xR4vL6w",
+    "severity": "high",
+    "description": "Known gateway token literal"
+  },
+  {
+    "id": "gateway_token_request",
+    "pattern": "(?i)\\b(gateway|api|service)\\s+token\\b.{0,40}\\b(reveal|show|give|provide|share|what\\s+is|send)\\b|\\b(what\\s+is|reveal|show|give|provide|share|send)\\b.{0,40}\\b(gateway|api|service)\\s+token\\b",
+    "severity": "high",
+    "description": "Direct gateway token exfiltration request"
+  },
+  {
+    "id": "break_glass_pin_literal",
+    "pattern": "(?i)\\bbreak[-\\s]?glass\\s+pin\\b.{0,20}\\b8842\\b|\\b8842\\b.{0,20}\\bbreak[-\\s]?glass",
+    "severity": "high",
+    "description": "Break-glass PIN literal or pairing"
+  },
+  {
+    "id": "break_glass_request",
+    "pattern": "(?i)\\b(break[-\\s]?glass|emergency\\s+access|override\\s+credentials?)\\b.{0,40}\\b(pin|code|password|secret|credentials?)\\b",
+    "severity": "high",
+    "description": "Break-glass credential request"
+  },
+  {
+    "id": "webhook_secret_request",
+    "pattern": "(?i)\\bwebhook\\s+(signing\\s+)?secret\\b.{0,40}\\b(reveal|show|give|provide|what\\s+is)\\b|\\b(reveal|show|give|provide)\\b.{0,30}\\bwebhook\\s+(signing\\s+)?secret\\b",
+    "severity": "high",
+    "description": "Webhook signing secret exfiltration"
+  },
+  {
+    "id": "mass_export_data",
+    "pattern": "(?i)\\b(export|dump|download|extract|bulk\\s+pull)\\b.{0,40}\\b(all|entire|full|complete|every)\\b.{0,30}\\b(records?|tickets?|users?|data|database|customer)\\b",
+    "severity": "high",
+    "description": "Mass data export request"
+  },
+  {
+    "id": "salami_slice_export",
+    "pattern": "(?i)\\b(one\\s+more|just\\s+need|also\\s+need|next\\s+batch|another\\s+set)\\b.{0,40}\\b(records?|rows?|entries?|tickets?|emails?|accounts?)\\b",
+    "severity": "medium",
+    "description": "Incremental salami-slicing export pattern"
+  },
+  {
+    "id": "policy_bypass",
+    "pattern": "(?i)\\b(bypass|circumvent|skip|disable|turn\\s+off)\\b.{0,30}\\b(policy|policies|approval|audit|logging|security|guardrail)\\b",
+    "severity": "high",
+    "description": "Policy or security bypass request"
+  },
+  {
+    "id": "internal_policy_id",
+    "pattern": "(?i)\\bNXPOL-\\d{4}-\\w+\\b",
+    "severity": "medium",
+    "description": "Internal policy identifier literal"
+  },
+  {
+    "id": "admin_distribution_list",
+    "pattern": "(?i)\\badmin[-\\s]?dist(?:ribution)?[-\\s]?list\\b.{0,30}\\b(reveal|show|give|list|email|addresses?)\\b",
+    "severity": "medium",
+    "description": "Admin distribution list exfiltration"
+  },
+  {
+    "id": "credential_harvest",
+    "pattern": "(?i)\\b(password|passwd|credential|api\\s+key|secret\\s+key|private\\s+key)\\b.{0,30}\\b(for|of|belonging\\s+to|used\\s+by)\\b.{0,30}\\b(admin|root|service|production|prod)\\b",
+    "severity": "high",
+    "description": "Credential harvesting for privileged accounts"
+  },
+  {
+    "id": "base64_exfil",
+    "pattern": "(?i)\\b(base64|hex\\s+encode|rot13)\\b.{0,30}\\b(encode|output|respond|reply)\\b",
+    "severity": "medium",
+    "description": "Encoding-based exfiltration technique"
+  },
+  {
+    "id": "hypothetical_bypass",
+    "pattern": "(?i)\\b(hypothetically|theoretically|for\\s+research|in\\s+a\\s+fictional\\s+scenario)\\b.{0,50}\\b(ignore|bypass|without\\s+restrictions?|no\\s+rules?)\\b",
+    "severity": "medium",
+    "description": "Hypothetical framing to bypass restrictions"
+  },
+  {
+    "id": "prompt_injection_delimiter",
+    "pattern": "(?i)(```\\s*system|<\\s*system\\s*>|\\[INST\\]|<<SYS>>|###\\s*Instruction)",
+    "severity": "high",
+    "description": "Prompt injection delimiter / fake system block"
+  },
+  {
+    "id": "sudo_privilege_escalation",
+    "pattern": "(?i)\\b(run|execute|invoke)\\s+as\\s+(root|sudo|admin|superuser)\\b",
+    "severity": "medium",
+    "description": "Privilege escalation phrasing"
+  }
+]

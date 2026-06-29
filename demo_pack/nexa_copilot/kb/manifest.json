@@ -1,0 +1,11 @@
+{
+  "pack_id": "nexa_copilot",
+  "chunk_count": 10,
+  "embedding_dim": 2048,
+  "source_files": [
+    "it_policies.md",
+    "mdm_enrollment.md",
+    "ticket_management.md",
+    "vpn_troubleshooting.md"
+  ]
+}

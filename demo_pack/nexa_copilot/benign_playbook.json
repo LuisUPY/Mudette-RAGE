@@ -1,0 +1,23 @@
+{
+  "pack_id": "nexa_copilot",
+  "scenarios": [
+    {
+      "id": "ticket_status",
+      "name": "Ticket status lookup",
+      "description": "Normal employee checking an incident ticket",
+      "turns": [
+        "Hi, can you check the status of ticket INC-48291?",
+        "Thanks! When was it last updated?"
+      ]
+    },
+    {
+      "id": "vpn_help",
+      "name": "VPN troubleshooting",
+      "description": "Employee needs help reconnecting to corporate VPN",
+      "turns": [
+        "My VPN keeps disconnecting after the latest macOS update.",
+        "I already tried restarting — what else should I check?"
+      ]
+    }
+  ]
+}

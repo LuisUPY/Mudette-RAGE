@@ -1,0 +1,42 @@
+[
+  {
+    "text": "# NexaCorp IT Policies (Employee-Facing Summary)\n\n## Acceptable Use\n\nEmployees must use NexaCorp systems for business purposes. Personal use is limited per NXPOL-2024-AUP.\n\n## Access Requests\n\nStaging and production access require manager approval via the Access Hub. Break-glass emergency access exists but requires dual authorization \u2014 details are in the internal wiki (restricted).\n\n## Data Handling",
+    "source": "it_policies.md"
+  },
+  {
+    "text": "Customer and employee PII must not be exported in bulk. Individual record lookups for legitimate support tasks are permitted with ticket reference.\n\n## Security Reporting\n\nReport suspected phishing or credential leaks to security@nexacorp.internal immediately.",
+    "source": "it_policies.md"
+  },
+  {
+    "text": "# NexaCorp MDM Enrollment Guide\n\n## Supported Platforms\n\n- macOS 13+ (corporate laptops)\n- iOS 16+ (BYOD with approval)\n- Windows 11 (engineering workstations)\n\n## Enrollment Steps (macOS)",
+    "source": "mdm_enrollment.md"
+  },
+  {
+    "text": "1. Download the NexaCorp MDM profile from the self-service portal.\n2. Open System Settings \u2192 Profiles and install the NexaCorp Device Management profile.\n3. Authenticate with your NexaCorp SSO credentials.\n4. Wait for compliance check (typically 5\u201310 minutes).\n\n## Common Errors",
+    "source": "mdm_enrollment.md"
+  },
+  {
+    "text": "- **MDM-101**: Profile expired \u2014 re-download from portal\n- **MDM-204**: Device not in approved inventory \u2014 contact IT provisioning\n\n## Contact\n\nFor provisioning issues, open a ticket or visit the IT walk-up desk on Floor 3.",
+    "source": "mdm_enrollment.md"
+  },
+  {
+    "text": "# NexaCorp Ticket Management\n\n## Ticket Format\n\nIncident tickets use the format INC-##### (e.g., INC-48291).\n\n## Status Values\n\n- **New** \u2014 Ticket created, awaiting triage\n- **In Progress** \u2014 Assigned to an engineer\n- **Pending** \u2014 Waiting on user or vendor response\n- **Resolved** \u2014 Fix applied, awaiting confirmation\n- **Closed** \u2014 Confirmed resolved by requester\n\n## How to Check Status",
+    "source": "ticket_management.md"
+  },
+  {
+    "text": "Employees can view ticket status in the IT self-service portal under \"My Requests\" or ask Nexa Copilot for a summary.\n\n## SLA Targets\n\n- P1 (Critical): 4 hours\n- P2 (High): 8 business hours\n- P3 (Normal): 2 business days",
+    "source": "ticket_management.md"
+  },
+  {
+    "text": "# NexaCorp VPN Troubleshooting\n\n## Common Issues After macOS Updates\n\nAfter a major macOS update, employees may experience VPN disconnections. Recommended steps:",
+    "source": "vpn_troubleshooting.md"
+  },
+  {
+    "text": "1. Restart the NexaVPN client from the menu bar.\n2. Remove and re-add the VPN profile in System Settings \u2192 VPN.\n3. Ensure the NexaCorp root certificate is trusted in Keychain Access.\n4. Contact IT if error code VPN-403 persists after 15 minutes.\n\n## Password Reset",
+    "source": "vpn_troubleshooting.md"
+  },
+  {
+    "text": "VPN passwords sync with your NexaCorp Active Directory account. Reset via the self-service portal at https://sso.nexacorp.internal/reset.\n\n## Support Escalation\n\nIf issues persist, open ticket INC-* via the IT portal or email helpdesk@nexacorp.internal.",
+    "source": "vpn_troubleshooting.md"
+  }
+]

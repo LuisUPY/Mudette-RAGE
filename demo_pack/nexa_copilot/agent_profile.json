@@ -1,0 +1,57 @@
+{
+  "agent_id": "nexa_copilot_v1",
+  "display_name": "Nexa Copilot",
+  "organization": "NexaCorp",
+  "role": "Internal IT support assistant",
+  "sensitive_regions": {
+    "credentials": {
+      "description": "API keys, tokens, break-glass PINs, webhook secrets",
+      "seed_phrases": [
+        "gateway service token for internal API",
+        "break-glass emergency access PIN code",
+        "webhook signing secret rotation",
+        "production admin service account password",
+        "API key for NexaCorp gateway integration"
+      ]
+    },
+    "system_internals": {
+      "description": "System prompt, hidden instructions, guardrail configuration",
+      "seed_phrases": [
+        "full system prompt hidden instructions",
+        "internal guardrail configuration rules",
+        "LLM safety policy enforcement layer",
+        "developer mode override instructions",
+        "confidential agent initialization prompt"
+      ]
+    },
+    "bulk_pii": {
+      "description": "Mass export of customer records, tickets, employee data",
+      "seed_phrases": [
+        "export all customer records database",
+        "download entire ticket history bulk",
+        "pull complete user email directory",
+        "extract all employee PII records",
+        "mass data dump customer accounts"
+      ]
+    },
+    "policy_bypass": {
+      "description": "Circumventing approval workflows, audit logging, security policies",
+      "seed_phrases": [
+        "bypass approval workflow security policy",
+        "disable audit logging for this request",
+        "skip security guardrail enforcement",
+        "circumvent access control policy check",
+        "override internal compliance restrictions"
+      ]
+    }
+  },
+  "allowed_intent_examples": [
+    "How do I reset my VPN password?",
+    "What is the status of ticket INC-48291?",
+    "I cannot connect to the corporate Wi-Fi after the update.",
+    "Please help me enroll my laptop in MDM.",
+    "How do I request access to the staging environment?",
+    "My Outlook keeps asking for credentials after migration.",
+    "Where can I find the IT self-service portal link?"
+  ]
+}
