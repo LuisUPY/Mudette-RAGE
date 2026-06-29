@@ -1,36 +1,31 @@
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from mtguard.embedder import Embedder
 from mtguard.gates.user_gate import UserGate
+from mtguard.judge import EscalationJudge
 from mtguard.layers.fusion import RiskFusion
 from mtguard.layers.l1_regex import RegexGuard
 from mtguard.layers.l2_trajectory import TrajectoryGuard
-from mtguard.judge import DEFAULT_JUDGE_MODEL, EscalationJudge
 from mtguard.models import FusionResult, GateResult, JudgeResult, TurnTrace
+from mtguard.nim import DEFAULT_JUDGE_MODEL, DEFAULT_MAIN_MODEL, NIM_BASE_URL
 from mtguard.pack_loader import DemoPack
 from mtguard.pipeline import MTGuardPipeline
-from mtguard.rag import KnowledgeBase, RetrievedChunk
+from mtguard.rag import KnowledgeBase
 
-_BLOCK_MESSAGE = (
-    "I cannot assist with that request. It has been blocked by NexaCorp security policy. "
-    "If you believe this is an error, contact helpdesk@nexacorp.internal."
+_MAIN_API_KEY_ERROR = (
+    "Error Crítico: No se detectó la NVIDIA API Key principal para Nexa Copilot."
 )
+_JUDGE_API_KEY_ERROR = (
+    "Error Crítico: El Juez de Escalación está activo pero requiere una NVIDIA API Key "
+    "válida para el modelo mini juez."
+)
+
 _ALERT_BANNER = "[Security Notice] This conversation turn was flagged for elevated risk.\n\n"
-_FALLBACK = (
-    "I can help with VPN connectivity, ticket status (INC-*), MDM enrollment, and access requests. "
-    "Visit the IT self-service portal or open a ticket for further assistance."
-)
-_SECRET_PATTERNS = (
-    r"GW-7k9mN2pQ8xR4vL6w",
-    r"\b8842\b",
-    r"whsec_nexa_sim",
-    r"it-admins@nexacorp\.internal",
-)
-DEFAULT_MAIN_MODEL = "gpt-4o"
 
 
 @dataclass
@@ -41,18 +36,33 @@ class AgentTurn:
     gate: GateResult
 
 
+def _require_main_api_key(api_key: str | None) -> str:
+    key = (api_key or "").strip()
+    if not key:
+        raise ValueError(_MAIN_API_KEY_ERROR)
+    return key
+
+
 @dataclass
 class NexaAgent:
-    """Nexa Copilot — offline RAG or online LLM when main API key is set."""
+    """Pack-driven agent — responses via NVIDIA NIM API only (RAG context + LLM)."""
 
     pack: DemoPack
     kb: KnowledgeBase
-    main_api_key: str | None = None
+    main_api_key: str
     main_model: str = DEFAULT_MAIN_MODEL
     system_prompt: str = field(init=False)
+    secret_patterns: list[re.Pattern[str]] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
+        self.main_api_key = _require_main_api_key(self.main_api_key)
         self.system_prompt = self.pack.system_prompt
+        vault_path = self.pack.pack_dir / "secrets_vault.json"
+        vault = json.loads(vault_path.read_text(encoding="utf-8"))
+        secrets = vault.get("secrets", {})
+        self.secret_patterns = [
+            re.compile(re.escape(str(v)), re.IGNORECASE) for v in secrets.values() if v
+        ]
 
     @classmethod
     def from_pack(
@@ -66,7 +76,7 @@ class NexaAgent:
         return cls(
             pack=pack,
             kb=KnowledgeBase.from_pack_dir(pack.pack_dir, embedder=embedder),
-            main_api_key=main_api_key or None,
+            main_api_key=_require_main_api_key(main_api_key),
             main_model=main_model,
         )
 
@@ -77,31 +87,36 @@ class NexaAgent:
         fusion: FusionResult | None = None,
     ) -> str:
         if not gate.allow_llm:
-            return _BLOCK_MESSAGE
+            return self._scrub_secrets(self._block_message())
 
-        if self.main_api_key:
-            body = self._compose_online(message)
-        else:
-            body = self._compose_offline(message)
-
+        body = self._compose_online(message)
         if gate.show_banner:
             body = _ALERT_BANNER + body
         return self._scrub_secrets(body)
 
+    def _block_message(self) -> str:
+        org = self.pack.agent_profile.get("organization", self.pack.display_name)
+        return (
+            f"I cannot assist with that request. It has been blocked by {org} security policy. "
+            "If you believe this is an error, please contact your IT support team."
+        )
+
     def _compose_online(self, message: str) -> str:
+        _require_main_api_key(self.main_api_key)
+
         chunks = self.kb.search(message, top_k=3)
         context = "\n\n---\n\n".join(c.text for c in chunks) if chunks else ""
         rag_block = f"Knowledge base excerpts:\n{context}\n\n" if context else ""
         user_content = f"{rag_block}Employee question:\n{message}"
-        try:
-            return self._call_main_llm(user_content)
-        except Exception:  # noqa: BLE001
-            return self._compose_offline(message)
+        return self._call_main_llm(user_content)
 
     def _call_main_llm(self, user_content: str) -> str:
         from openai import OpenAI
 
-        client = OpenAI(api_key=self.main_api_key)
+        client = OpenAI(
+            base_url=NIM_BASE_URL,
+            api_key=self.main_api_key,
+        )
         response = client.chat.completions.create(
             model=self.main_model,
             messages=[
@@ -111,56 +126,14 @@ class NexaAgent:
             max_tokens=500,
             temperature=0.3,
         )
-        return (response.choices[0].message.content or _FALLBACK).strip()
+        content = (response.choices[0].message.content or "").strip()
+        if not content:
+            raise RuntimeError("NVIDIA NIM devolvió una respuesta vacía.")
+        return content
 
-    def _compose_offline(self, message: str) -> str:
-        chunks = self.kb.search(message, top_k=3)
-        if not chunks:
-            return _FALLBACK
-
-        lower = message.lower()
-        if re.search(r"INC-\d+", message, re.IGNORECASE):
-            return self._ticket_response(message, chunks)
-        if any(kw in lower for kw in ("vpn", "wi-fi", "wifi", "network")):
-            return self._topic_response(chunks, "vpn_troubleshooting.md")
-        if any(kw in lower for kw in ("mdm", "enroll", "device management", "profile")):
-            return self._topic_response(chunks, "mdm_enrollment.md")
-        if any(kw in lower for kw in ("ticket", "incident", "inc-", "status")):
-            return self._topic_response(chunks, "ticket_management.md")
-
-        return self._generic_response(chunks[0])
-
-    def _ticket_response(self, message: str, chunks: list[RetrievedChunk]) -> str:
-        match = re.search(r"(INC-\d+)", message, re.IGNORECASE)
-        ticket_id = match.group(1).upper() if match else "your ticket"
-        topic_chunks = [c for c in chunks if c.source == "ticket_management.md"] or chunks
-        excerpt = self._excerpt(topic_chunks[0].text, 280)
-        return (
-            f"I can help with {ticket_id}. {excerpt} "
-            "Check live status in the IT self-service portal under My Requests."
-        )
-
-    def _topic_response(self, chunks: list[RetrievedChunk], source: str) -> str:
-        matched = next((c for c in chunks if c.source == source), chunks[0])
-        return self._generic_response(matched)
-
-    def _generic_response(self, chunk: RetrievedChunk) -> str:
-        excerpt = self._excerpt(chunk.text, 380)
-        return f"Based on NexaCorp IT documentation ({chunk.source}):\n\n{excerpt}"
-
-    @staticmethod
-    def _excerpt(text: str, max_chars: int) -> str:
-        cleaned = re.sub(r"^#+\s*", "", text, flags=re.MULTILINE)
-        cleaned = re.sub(r"\n{3,}", "\n\n", cleaned).strip()
-        if len(cleaned) <= max_chars:
-            return cleaned
-        cut = cleaned[:max_chars].rsplit(" ", 1)[0]
-        return cut.rstrip(".,; ") + "…"
-
-    @staticmethod
-    def _scrub_secrets(text: str) -> str:
-        for pattern in _SECRET_PATTERNS:
-            text = re.sub(pattern, "[REDACTED]", text, flags=re.IGNORECASE)
+    def _scrub_secrets(self, text: str) -> str:
+        for pattern in self.secret_patterns:
+            text = pattern.sub("[REDACTED]", text)
         return text
 
 
@@ -183,18 +156,24 @@ class MTGuardSession:
         self.pack = pack
         self.embedder = embedder or Embedder()
         self.pipeline = pipeline or self._build_pipeline()
+
+        resolved_main = _require_main_api_key(main_api_key)
         self.agent = agent or NexaAgent.from_pack(
             pack,
             self.embedder,
-            main_api_key=main_api_key,
+            main_api_key=resolved_main,
             main_model=main_model,
         )
+
         if judge is not None:
             self.judge = judge
-        elif judge_enabled and judge_api_key:
+        elif judge_enabled:
+            judge_key = (judge_api_key or "").strip()
+            if not judge_key:
+                raise ValueError(_JUDGE_API_KEY_ERROR)
             self.judge = EscalationJudge(
                 pack=pack,
-                api_key=judge_api_key,
+                api_key=judge_key,
                 model=judge_model,
                 enabled=True,
             )

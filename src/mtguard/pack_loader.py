@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -77,6 +78,20 @@ class DemoPack:
         if len(self.attack_playbook.get("scenarios", [])) < 3:
             errors.append("attack_playbook needs at least 3 scenarios")
         return errors
+
+
+def compile_secret_patterns(secrets_vault: dict, min_length: int = 2) -> list[re.Pattern[str]]:
+    """Build scrub patterns from secrets_vault.json values (multi-tenant safe)."""
+    patterns: list[re.Pattern[str]] = []
+    secrets = secrets_vault.get("secrets", {})
+    for value in secrets.values():
+        if not isinstance(value, str):
+            continue
+        tokens = [t.strip() for t in value.split(",")] if "," in value else [value.strip()]
+        for token in tokens:
+            if len(token) >= min_length:
+                patterns.append(re.compile(re.escape(token), re.IGNORECASE))
+    return patterns
 
 
 def playbook_for_mode(pack: DemoPack, mode: str) -> dict:

@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
-from mtguard.agent import MTGuardSession
+from mtguard.agent import MTGuardSession, _MAIN_API_KEY_ERROR, _JUDGE_API_KEY_ERROR
 from mtguard.models import Verdict
 from mtguard.pack_loader import DemoPack, get_playbook_scenario, playbook_for_mode
 
@@ -26,6 +27,13 @@ def verdict_meets_minimum(actual: Verdict, minimum: str) -> bool:
     return _VERDICT_RANK[actual] >= _VERDICT_RANK[Verdict(minimum)]
 
 
+def _resolve_main_api_key(key: str | None) -> str:
+    resolved = (key or os.environ.get("MAIN_API_KEY") or "").strip()
+    if not resolved:
+        raise ValueError(_MAIN_API_KEY_ERROR)
+    return resolved
+
+
 def run_scenario(
     pack_dir: Path,
     scenario_id: str,
@@ -39,11 +47,16 @@ def run_scenario(
     if not scenario:
         raise ValueError(f"Unknown scenario: {scenario_id}")
 
+    main_key = _resolve_main_api_key(main_api_key)
+    judge_on = judge_enabled
+    if judge_on and not (judge_api_key or "").strip():
+        raise ValueError(_JUDGE_API_KEY_ERROR)
+
     session = MTGuardSession.from_pack_dir(
         pack_dir,
-        main_api_key=main_api_key,
+        main_api_key=main_key,
         judge_api_key=judge_api_key,
-        judge_enabled=judge_enabled and bool(judge_api_key),
+        judge_enabled=judge_on,
     )
 
     turns_out: list[dict] = []
@@ -95,31 +108,36 @@ def main() -> None:
     parser.add_argument("--json", action="store_true", help="Output JSON")
     args = parser.parse_args()
 
+    if not args.all and not args.scenario:
+        parser.error("Provide --scenario ID or --all")
+
     kwargs = {
-        "main_api_key": args.main_api_key,
-        "judge_api_key": args.judge_api_key,
+        "main_api_key": args.main_api_key or os.environ.get("MAIN_API_KEY"),
+        "judge_api_key": args.judge_api_key or os.environ.get("JUDGE_API_KEY"),
         "judge_enabled": args.judge,
     }
 
-    if args.all:
-        results = run_all_attack_scenarios(args.pack, **kwargs)
-        if args.json:
-            print(json.dumps(results, indent=2))
-        else:
-            for r in results:
-                status = "PASS" if r["passed"] else "FAIL"
-                print(
-                    f"[{status}] {r['scenario_id']}: "
-                    f"{r['final_verdict']} (risk {r['final_risk']}) "
-                    f"expect>={r['expect_min_verdict']}"
-                )
-        failed = [r for r in results if not r["passed"]]
-        sys.exit(1 if failed else 0)
+    try:
+        if args.all:
+            results = run_all_attack_scenarios(args.pack, **kwargs)
+            if args.json:
+                print(json.dumps(results, indent=2))
+            else:
+                for r in results:
+                    status = "PASS" if r["passed"] else "FAIL"
+                    print(
+                        f"[{status}] {r['scenario_id']}: "
+                        f"{r['final_verdict']} (risk {r['final_risk']}) "
+                        f"expect>={r['expect_min_verdict']}"
+                    )
+            failed = [r for r in results if not r["passed"]]
+            sys.exit(1 if failed else 0)
 
-    if not args.scenario:
-        parser.error("Provide --scenario ID or --all")
+        result = run_scenario(args.pack, args.scenario, mode=args.mode, **kwargs)
+    except ValueError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(2)
 
-    result = run_scenario(args.pack, args.scenario, mode=args.mode, **kwargs)
     if args.json:
         print(json.dumps(result, indent=2))
     else:

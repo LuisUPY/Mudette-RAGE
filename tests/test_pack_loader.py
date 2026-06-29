@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from mtguard.pack_loader import REQUIRED_FILES, DemoPack, get_playbook_scenario, playbook_choices
+from mtguard.pack_loader import REQUIRED_FILES, DemoPack, compile_secret_patterns, get_playbook_scenario, playbook_choices
 
 ROOT = Path(__file__).resolve().parents[1]
 PACK_DIR = ROOT / "demo_pack" / "nexa_copilot"
@@ -62,3 +62,13 @@ class TestPackLoader:
         scenario = get_playbook_scenario(pack, "redteam", "jailbreak_direct")
         assert scenario is not None
         assert len(scenario["turns"]) == 1
+
+    def test_compile_secret_patterns_from_vault(self) -> None:
+        pack = DemoPack.load(PACK_DIR)
+        patterns = compile_secret_patterns(pack.secrets_vault)
+        assert len(patterns) >= 5
+        sample = "token GW-7k9mN2pQ8xR4vL6w here"
+        scrubbed = sample
+        for pat in patterns:
+            scrubbed = pat.sub("[REDACTED]", scrubbed)
+        assert "GW-7k9mN2pQ8xR4vL6w" not in scrubbed

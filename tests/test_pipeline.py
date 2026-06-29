@@ -124,12 +124,10 @@ class TestEscalationJudge:
         fusion = FusionResult(risk_score=60, verdict=Verdict.ALERT)
         assert judge.should_invoke(fusion) is True
 
-    def test_offline_without_api_key(self) -> None:
+    def test_judge_requires_api_key(self) -> None:
         pack = DemoPack.load(PACK)
-        judge = EscalationJudge(pack=pack, api_key="", enabled=True)
-        from mtguard.models import FusionResult
-
-        assert judge.should_invoke(FusionResult(60, Verdict.ALERT)) is False
+        with pytest.raises(ValueError, match="NVIDIA API Key"):
+            EscalationJudge(pack=pack, api_key="", enabled=True)
 
     @pytest.mark.parametrize(
         "text,expected",

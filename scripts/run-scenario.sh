@@ -12,5 +12,7 @@ if [[ -z "$SCENARIO" ]]; then
 fi
 
 shift || true
+require_env MAIN_API_KEY "export MAIN_API_KEY='nvapi-…'"
+
 echo "==> Running scenario: $SCENARIO"
-uv_run Mudette-scenario --scenario "$SCENARIO" "$@"
+uv_run Mudette-scenario --scenario "$SCENARIO" --main-api-key "$MAIN_API_KEY" "$@"

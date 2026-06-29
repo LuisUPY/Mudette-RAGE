@@ -20,3 +20,13 @@ require_uv() {
     exit 1
   fi
 }
+
+require_env() {
+  local name="$1"
+  local hint="${2:-}"
+  if [[ -z "${!name:-}" ]]; then
+    echo "Error: $name is required." >&2
+    [[ -n "$hint" ]] && echo "  $hint" >&2
+    exit 1
+  fi
+}

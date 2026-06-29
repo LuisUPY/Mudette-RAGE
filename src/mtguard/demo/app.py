@@ -8,6 +8,7 @@ from pathlib import Path
 import gradio as gr
 
 from mtguard.agent import MTGuardSession
+from mtguard.nim import DEFAULT_JUDGE_MODEL, DEFAULT_MAIN_MODEL
 from mtguard.pack_loader import (
     DemoPack,
     get_playbook_scenario,
@@ -45,17 +46,34 @@ def _playbook_dropdown_update(mode_label: str) -> gr.Dropdown:
 
 def _session_status(main_key: str, judge_key: str, judge_on: bool) -> str:
     parts = []
-    parts.append(
-        f"**Agente:** {'online (GPT)' if main_key.strip() else 'offline (RAG)'}"
-    )
+    if main_key.strip():
+        parts.append(f"**Agente:** NVIDIA NIM · `{DEFAULT_MAIN_MODEL}`")
+    else:
+        parts.append("**Agente:** NVIDIA API key principal **obligatoria**")
     if judge_on:
         if judge_key.strip():
-            parts.append("**Juez:** habilitado · modelo ligero (`gpt-4o-mini`)")
+            parts.append(f"**Juez:** habilitado · `{DEFAULT_JUDGE_MODEL}`")
         else:
-            parts.append("**Juez:** requiere API key del juez (separada del agente)")
+            parts.append("**Juez:** NVIDIA API key del juez **obligatoria** si está activo")
     else:
         parts.append("**Juez:** desactivado")
     return " · ".join(parts)
+
+
+def _api_error_response(
+    app: AppSession | None,
+    message: str,
+    error: str,
+) -> tuple[AppSession | None, list, str, str, dict | None]:
+    history = list(app.history) if app else []
+    history = [*history, {"role": "user", "content": message.strip()}]
+    history = [
+        *history,
+        {"role": "assistant", "content": f"**Error API:** {error}"},
+    ]
+    if app:
+        app.history = history
+    return app, history, f"**Error:** {error}", "", app.last_trace if app else None
 
 
 def start_session(
@@ -67,12 +85,21 @@ def start_session(
     mode = _mode_from_radio(mode_label)
     main_key = (main_api_key or "").strip()
     judge_key = (judge_api_key or "").strip()
+    if not main_key:
+        raise gr.Error(
+            "Error Crítico: No se detectó la NVIDIA API Key principal para Nexa Copilot."
+        )
+    if judge_enabled and not judge_key:
+        raise gr.Error(
+            "Error Crítico: El Juez de Escalación está activo pero requiere una NVIDIA API Key "
+            "válida para el modelo mini juez."
+        )
     judge_on = judge_enabled and bool(judge_key)
 
     session = AppSession(
         mtguard=MTGuardSession.from_pack_dir(
             PACK_DIR,
-            main_api_key=main_key or None,
+            main_api_key=main_key,
             judge_api_key=judge_key or None,
             judge_enabled=judge_on,
         ),
@@ -102,7 +129,11 @@ def handle_chat(
     if not app or not message.strip():
         return app, app.history if app else [], format_trace_panel(None), "", None
 
-    result = app.mtguard.turn(message.strip())
+    try:
+        result = app.mtguard.turn(message.strip())
+    except Exception as exc:
+        return _api_error_response(app, message, str(exc))
+
     trace = result.trace.to_dict()
     app.last_trace = trace
     app.history = [*app.history, {"role": "user", "content": message.strip()}]
@@ -169,14 +200,14 @@ def build_ui() -> gr.Blocks:
         with gr.Row(visible=True) as setup_row:
             with gr.Column(scale=1):
                 main_api_key = gr.Textbox(
-                    label="API Key — Agente principal (Nexa Copilot)",
+                    label="NVIDIA API Key — Agente principal (Nexa Copilot)",
                     type="password",
-                    placeholder="sk-… (modelo principal, ej. gpt-4o)",
+                    placeholder="nvapi-… (llama-3.3-70b-instruct)",
                 )
                 judge_api_key = gr.Textbox(
-                    label="API Key — Juez (EscalationJudge)",
+                    label="NVIDIA API Key — Juez (EscalationJudge)",
                     type="password",
-                    placeholder="sk-… (modelo ligero, ej. gpt-4o-mini)",
+                    placeholder="nvapi-… (llama-3.1-8b-instruct)",
                 )
                 mode = gr.Radio(
                     ["Modo Usuario (benigno)", "Modo Red Team"],
@@ -190,9 +221,9 @@ def build_ui() -> gr.Blocks:
                 start_btn = gr.Button("Iniciar sesión", variant="primary")
             with gr.Column(scale=1):
                 gr.Markdown(
-                    "1. **Agente** y **Juez** usan API keys **separadas** (solo RAM).\n"
-                    "2. Sin key del agente → respuestas offline vía RAG.\n"
-                    "3. El juez usa un modelo más ligero y solo actúa en WATCH/ALERT con risk≥55."
+                    "1. **NVIDIA API key del agente es obligatoria** (build.nvidia.com).\n"
+                    f"2. Modelo principal: `{DEFAULT_MAIN_MODEL}` · Juez: `{DEFAULT_JUDGE_MODEL}`.\n"
+                    "3. Errores de NIM (clave inválida, cuota, red) se muestran en el chat."
                 )
 
         judge_status = gr.Markdown("")

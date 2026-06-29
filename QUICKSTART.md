@@ -13,10 +13,11 @@ cd Mudette-F
 ./scripts/setup.sh
 ```
 
-## 2. Validar (offline, sin API keys)
+## 2. Validar
 
 ```bash
-./scripts/run-tests.sh
+./scripts/run-tests.sh                    # pytest con API mockeada (sin keys reales)
+export MAIN_API_KEY='nvapi-…'                # obligatoria para benchmarks (NVIDIA NIM)
 ./scripts/run-benchmarks-no-judge.sh
 ```
 
@@ -28,7 +29,7 @@ Salida esperada de benchmarks: `PASS` en `crescendo_credentials`, `salami_export
 ./scripts/run-demo.sh
 ```
 
-1. Opcional: API key **agente** (GPT principal) y API key **juez** (modelo ligero), separadas.
+1. **NVIDIA API key del agente obligatoria** (build.nvidia.com). Key del juez solo si activas el toggle.
 2. Modo Usuario o Red Team → **Iniciar sesión**.
 3. Chatea o usa **Siguiente turno del playbook**.
 4. **Ver capas** muestra L1, L2, Fusion, Judge, Gate.
@@ -36,9 +37,8 @@ Salida esperada de benchmarks: `PASS` en `crescendo_credentials`, `salami_export
 ## 4. Benchmarks con juez
 
 ```bash
-export JUDGE_API_KEY='sk-…'
-# opcional:
-export MAIN_API_KEY='sk-…'
+export MAIN_API_KEY='nvapi-…'
+export JUDGE_API_KEY='nvapi-…'
 ./scripts/run-benchmarks-with-judge.sh
 ```
 
